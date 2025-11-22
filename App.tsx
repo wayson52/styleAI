@@ -1,11 +1,150 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { UploadSection } from './components/UploadSection';
 import { generateTryOnImage, searchImages } from './services/geminiService';
 import { storage } from './services/storage';
-import { SAMPLE_ARTISTS, SAMPLE_TOPS, SAMPLE_BOTTOMS, SAMPLE_PETS, SAMPLE_PET_OUTFITS } from './constants';
+import { 
+  SAMPLE_ARTISTS, SAMPLE_TOPS, SAMPLE_BOTTOMS, SAMPLE_PETS, SAMPLE_PET_OUTFITS,
+  RANDOM_MODEL_QUERIES, RANDOM_TOP_QUERIES, RANDOM_BOTTOM_QUERIES, RANDOM_PET_QUERIES, RANDOM_PET_OUTFIT_QUERIES 
+} from './constants';
 import { Sample, HistoryItem, SubjectType } from './types';
-import { Shirt, Sparkles, AlertCircle, Download, Sun, Moon, RefreshCw, Layers, User, Clock, Trash2, PawPrint, Heart } from 'lucide-react';
+import { Shirt, Sparkles, AlertCircle, Download, Sun, Moon, RefreshCw, Layers, User, Clock, Trash2, PawPrint, Heart, ZoomIn, RotateCcw } from 'lucide-react';
+
+// --- Zoomable Image Component ---
+interface ZoomableImageProps {
+  src: string;
+  alt: string;
+}
+
+const ZoomableImage: React.FC<ZoomableImageProps> = ({ src, alt }) => {
+  const [scale, setScale] = useState(1);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const imgRef = useRef<HTMLImageElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const lastPos = useRef({ x: 0, y: 0 });
+  const startPinchDist = useRef<number | null>(null);
+  const startScale = useRef(1);
+
+  const handleWheel = (e: React.WheelEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const zoomSensitivity = 0.001;
+    const delta = -e.deltaY * zoomSensitivity;
+    const newScale = Math.min(Math.max(1, scale + delta * scale), 4);
+    
+    setScale(newScale);
+    
+    if (newScale === 1) {
+      setPosition({ x: 0, y: 0 });
+    }
+  };
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+    lastPos.current = { x: e.clientX, y: e.clientY };
+    (e.target as Element).setPointerCapture(e.pointerId);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!isDragging) return;
+    e.preventDefault();
+    
+    const dx = e.clientX - lastPos.current.x;
+    const dy = e.clientY - lastPos.current.y;
+    
+    lastPos.current = { x: e.clientX, y: e.clientY };
+
+    if (scale > 1) {
+       // Only allow panning if zoomed in
+       setPosition(prev => ({
+         x: prev.x + dx,
+         y: prev.y + dy
+       }));
+    }
+  };
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    setIsDragging(false);
+    (e.target as Element).releasePointerCapture(e.pointerId);
+  };
+
+  // Touch pinch zoom logic (Simple implementation)
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      startPinchDist.current = dist;
+      startScale.current = scale;
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (e.touches.length === 2 && startPinchDist.current !== null) {
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      const newScale = Math.min(Math.max(1, startScale.current * (dist / startPinchDist.current)), 4);
+      setScale(newScale);
+      if (newScale === 1) setPosition({ x: 0, y: 0 });
+    }
+  };
+
+  const handleTouchEnd = () => {
+    startPinchDist.current = null;
+  };
+
+  const resetZoom = () => {
+    setScale(1);
+    setPosition({ x: 0, y: 0 });
+  };
+
+  return (
+    <div 
+      ref={containerRef}
+      className="w-full h-full flex items-center justify-center overflow-hidden relative touch-none cursor-move"
+      onWheel={handleWheel}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onDoubleClick={resetZoom}
+    >
+      <img 
+        ref={imgRef}
+        src={src} 
+        alt={alt} 
+        className="max-w-full max-h-[70vh] object-contain transition-transform duration-100 ease-out"
+        style={{
+          transform: `scale(${scale}) translate(${position.x / scale}px, ${position.y / scale}px)`,
+        }}
+        draggable={false}
+      />
+      
+      {/* Zoom Indicator / Reset Button */}
+      {scale > 1 && (
+        <div className="absolute bottom-4 right-4 bg-black/60 text-white px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-2 backdrop-blur-sm">
+            <ZoomIn className="w-3 h-3" /> 
+            {Math.round(scale * 100)}%
+            <button 
+                onClick={(e) => { e.stopPropagation(); resetZoom(); }}
+                className="ml-2 p-1 bg-white/20 rounded-full hover:bg-white/40 transition-colors"
+            >
+                <RotateCcw className="w-3 h-3" />
+            </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
 
 const App: React.FC = () => {
   // Inputs
@@ -18,21 +157,47 @@ const App: React.FC = () => {
 
   // Samples Data
   const [modelSamples, setModelSamples] = useState<Sample[]>([]);
+  const [topSamples, setTopSamples] = useState<Sample[]>(SAMPLE_TOPS);
+  const [bottomSamples, setBottomSamples] = useState<Sample[]>(SAMPLE_BOTTOMS);
+  const [petOutfitSamples, setPetOutfitSamples] = useState<Sample[]>(SAMPLE_PET_OUTFITS);
 
   // Outputs
   const [resultImage, setResultImage] = useState<string | null>(null);
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  
+  // Theme State - Auto detect system preference
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+    return false;
+  });
   
   // History
   const [history, setHistory] = useState<HistoryItem[]>([]);
   
   // Status
   const [isLoading, setIsLoading] = useState(false);
+  const [isModelLoading, setIsModelLoading] = useState(false);
+  const [isTopsLoading, setIsTopsLoading] = useState(false);
+  const [isBottomsLoading, setIsBottomsLoading] = useState(false);
+  const [isPetOutfitsLoading, setIsPetOutfitsLoading] = useState(false);
+
+  const [generationStatus, setGenerationStatus] = useState<string>('Processing...');
   const [error, setError] = useState<string | null>(null);
+
+  // Theme Effect
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [isDarkMode]);
 
   // Load trending chinese actors on mount (if human)
   useEffect(() => {
     const fetchTrendingModels = async () => {
+      setIsModelLoading(true);
       try {
         // If strictly defaulting to human on load:
         const results = await searchImages("Popular Chinese Actor");
@@ -44,6 +209,8 @@ const App: React.FC = () => {
       } catch (err) {
         console.error("Failed to load trending models", err);
         setModelSamples(SAMPLE_ARTISTS);
+      } finally {
+        setIsModelLoading(false);
       }
     };
     
@@ -53,6 +220,7 @@ const App: React.FC = () => {
     } else if (subjectType === 'pet') {
         // For pets, just use samples initially
         setModelSamples(SAMPLE_PETS);
+        setIsModelLoading(false);
     }
   }, [subjectType]);
 
@@ -178,7 +346,10 @@ const App: React.FC = () => {
     
     // Update samples based on mode
     if (type === 'human') {
-        setModelSamples(SAMPLE_ARTISTS); // Or trigger fetch again
+        // Force fetch again if needed or rely on effect
+        if (modelSamples.length === 0 || modelSamples === SAMPLE_PETS) {
+             setModelSamples([]); // Clear to trigger effect and show loading
+        }
     } else {
         setModelSamples(SAMPLE_PETS);
     }
@@ -193,6 +364,7 @@ const App: React.FC = () => {
   };
 
   const handleModelSearch = async (query: string) => {
+    setIsModelLoading(true);
     try {
       setError(null);
       const results = await searchImages(query);
@@ -204,6 +376,108 @@ const App: React.FC = () => {
     } catch (err) {
       console.error("Search failed", err);
       setError("Failed to search for models. Please try again.");
+    } finally {
+      setIsModelLoading(false);
+    }
+  };
+
+  const handleTopsSearch = async (query: string) => {
+    setIsTopsLoading(true);
+    try {
+      setError(null);
+      const results = await searchImages(query);
+      if (results.length > 0) setTopSamples(results);
+      else setError(`No tops found for "${query}".`);
+    } catch (err) {
+      setError("Failed to search tops.");
+    } finally {
+      setIsTopsLoading(false);
+    }
+  };
+
+  const handleBottomsSearch = async (query: string) => {
+    setIsBottomsLoading(true);
+    try {
+      setError(null);
+      const results = await searchImages(query);
+      if (results.length > 0) setBottomSamples(results);
+      else setError(`No bottoms found for "${query}".`);
+    } catch (err) {
+      setError("Failed to search bottoms.");
+    } finally {
+      setIsBottomsLoading(false);
+    }
+  };
+
+  const handlePetOutfitSearch = async (query: string) => {
+    setIsPetOutfitsLoading(true);
+    try {
+      setError(null);
+      const results = await searchImages(query);
+      if (results.length > 0) setPetOutfitSamples(results);
+      else setError(`No outfits found for "${query}".`);
+    } catch (err) {
+      setError("Failed to search pet outfits.");
+    } finally {
+      setIsPetOutfitsLoading(false);
+    }
+  };
+
+  // --- RANDOMIZATION HANDLERS ---
+  
+  const getRandomQuery = (queries: string[]) => {
+    return queries[Math.floor(Math.random() * queries.length)];
+  };
+
+  const handleRandomizeModels = async () => {
+    setIsModelLoading(true);
+    try {
+      const query = getRandomQuery(subjectType === 'human' ? RANDOM_MODEL_QUERIES : RANDOM_PET_QUERIES);
+      const results = await searchImages(query);
+      if (results.length > 0) setModelSamples(results);
+    } catch (e) {
+      console.error("Randomization failed", e);
+    } finally {
+      setIsModelLoading(false);
+    }
+  };
+
+  const handleRandomizeTops = async () => {
+    setIsTopsLoading(true);
+    try {
+      const query = getRandomQuery(RANDOM_TOP_QUERIES);
+      const results = await searchImages(query);
+      if (results.length > 0) setTopSamples(results);
+    } catch (e) {
+      console.error("Randomization failed", e);
+    } finally {
+      setIsTopsLoading(false);
+    }
+  };
+
+  const handleRandomizeBottoms = async () => {
+    setIsBottomsLoading(true);
+    try {
+      const query = getRandomQuery(RANDOM_BOTTOM_QUERIES);
+      const results = await searchImages(query);
+      if (results.length > 0) setBottomSamples(results);
+    } catch (e) {
+      console.error("Randomization failed", e);
+    } finally {
+      setIsBottomsLoading(false);
+    }
+  };
+
+  const handleRandomizePetOutfits = async () => {
+    setIsPetOutfitsLoading(true);
+    try {
+      const query = getRandomQuery(RANDOM_PET_OUTFIT_QUERIES);
+      const results = await searchImages(query);
+      if (results.length > 0) setPetOutfitSamples(results);
+    } catch (e) {
+      console.error("Randomization failed", e);
+    } finally {
+      setIsPetOutfitsLoading(false);
     }
   };
 
@@ -229,10 +503,26 @@ const App: React.FC = () => {
     }
 
     setIsLoading(true);
+    setGenerationStatus("Preparing images...");
     setError(null);
     
     try {
+      // Simulate stages for better UX
+      setTimeout(() => {
+          if (isLoading) setGenerationStatus("Analyzing inputs...");
+      }, 1500);
+
+      setTimeout(() => {
+          if (isLoading) setGenerationStatus("Designing outfit...");
+      }, 3500);
+      
+      setTimeout(() => {
+          if (isLoading) setGenerationStatus("Applying texture and lighting...");
+      }, 6000);
+
       const generatedUrl = await generateTryOnImage(personImage, topImage, bottomImage, subjectType);
+      
+      setGenerationStatus("Finalizing...");
       setResultImage(generatedUrl);
       await addToHistory(generatedUrl);
     } catch (err: any) {
@@ -245,6 +535,7 @@ const App: React.FC = () => {
       setError(errorMessage);
     } finally {
       setIsLoading(false);
+      setGenerationStatus("Processing...");
     }
   };
 
@@ -257,14 +548,14 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className={`${isDarkMode ? 'dark' : ''} transition-colors duration-300`}>
+    <div className="transition-colors duration-300">
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans transition-colors duration-300 flex flex-col">
         {/* Header */}
         <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-50 transition-colors duration-300 shadow-sm">
           <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
             <div className="flex items-center space-x-3 cursor-pointer group" onClick={resetAll}>
               <div className="bg-primary/10 dark:bg-primary/20 p-2 rounded-xl group-hover:scale-105 transition-transform">
-                <Sparkles className="w-6 h-6 text-primary" />
+                <Sparkles className="w-6 h-6 text-primary dark:text-primary-400" />
               </div>
               <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">StyleAI</h1>
             </div>
@@ -272,7 +563,7 @@ const App: React.FC = () => {
             <div className="flex items-center space-x-4">
               <button 
                 onClick={toggleTheme}
-                className="p-2 rounded-full text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-colors"
+                className="p-2 rounded-full text-slate-500 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors"
                 aria-label="Toggle Dark Mode"
               >
                 {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
@@ -299,7 +590,7 @@ const App: React.FC = () => {
                 <div className="p-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
                    <div className="flex items-center justify-between mb-2">
                        <h2 className="font-bold text-slate-800 dark:text-white flex items-center">
-                         <User className="w-5 h-5 mr-2 text-primary" /> Base Model
+                         <User className="w-5 h-5 mr-2 text-primary dark:text-primary-400" /> Base Model
                        </h2>
                    </div>
                    
@@ -307,13 +598,13 @@ const App: React.FC = () => {
                    <div className="flex bg-slate-200 dark:bg-slate-800 p-1 rounded-lg">
                         <button 
                             onClick={() => handleSubjectTypeChange('human')}
-                            className={`flex-1 py-1 px-3 rounded-md text-xs font-medium flex items-center justify-center transition-all ${subjectType === 'human' ? 'bg-white dark:bg-slate-600 text-primary shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
+                            className={`flex-1 py-1 px-3 rounded-md text-xs font-medium flex items-center justify-center transition-all ${subjectType === 'human' ? 'bg-white dark:bg-slate-600 text-primary dark:text-primary-300 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
                         >
                             <User className="w-3 h-3 mr-1" /> Human
                         </button>
                         <button 
                             onClick={() => handleSubjectTypeChange('pet')}
-                            className={`flex-1 py-1 px-3 rounded-md text-xs font-medium flex items-center justify-center transition-all ${subjectType === 'pet' ? 'bg-white dark:bg-slate-600 text-primary shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
+                            className={`flex-1 py-1 px-3 rounded-md text-xs font-medium flex items-center justify-center transition-all ${subjectType === 'pet' ? 'bg-white dark:bg-slate-600 text-primary dark:text-primary-300 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
                         >
                             <PawPrint className="w-3 h-3 mr-1" /> Pet
                         </button>
@@ -338,11 +629,13 @@ const App: React.FC = () => {
                       samples={modelSamples}
                       onSelect={setPersonImage}
                       onSearch={handleModelSearch}
+                      onRandomize={handleRandomizeModels}
                       compact={true}
                       className="flex-grow"
                       enableCategoryFilter={subjectType === 'pet'} // Enable category for pets (Dog/Cat)
                       enableGenderFilter={subjectType === 'human'}
                       initialVisibleCount={6}
+                      isLoading={isModelLoading}
                     />
                   )}
                 </div>
@@ -366,13 +659,16 @@ const App: React.FC = () => {
                     <div className="p-2 flex-grow">
                         <UploadSection 
                         title="" 
-                        samples={SAMPLE_TOPS}
+                        samples={topSamples}
                         onSelect={handleTopSelect}
+                        onSearch={handleTopsSearch}
+                        onRandomize={handleRandomizeTops}
                         selectedUrl={topImage}
                         compact
                         className="shadow-none border-none p-0"
                         enableGenderFilter={false}
                         initialVisibleCount={6}
+                        isLoading={isTopsLoading}
                         />
                     </div>
                     </div>
@@ -388,13 +684,16 @@ const App: React.FC = () => {
                     <div className="p-2 flex-grow">
                         <UploadSection 
                         title="" 
-                        samples={SAMPLE_BOTTOMS}
+                        samples={bottomSamples}
                         onSelect={handleBottomSelect}
+                        onSearch={handleBottomsSearch}
+                        onRandomize={handleRandomizeBottoms}
                         selectedUrl={bottomImage}
                         compact
                         className="shadow-none border-none p-0"
                         enableGenderFilter={false}
                         initialVisibleCount={6}
+                        isLoading={isBottomsLoading}
                         />
                     </div>
                     </div>
@@ -412,13 +711,16 @@ const App: React.FC = () => {
                         <UploadSection 
                         title="Choose Outfit"
                         description="Select a cute outfit for your pet."
-                        samples={SAMPLE_PET_OUTFITS}
+                        samples={petOutfitSamples}
                         onSelect={handleTopSelect} // Reusing handleTopSelect for the single pet outfit
+                        onSearch={handlePetOutfitSearch}
+                        onRandomize={handleRandomizePetOutfits}
                         selectedUrl={topImage}
                         compact
                         className="shadow-none border-none p-0"
                         enableGenderFilter={false}
                         initialVisibleCount={8}
+                        isLoading={isPetOutfitsLoading}
                         />
                     </div>
                    </div>
@@ -435,13 +737,13 @@ const App: React.FC = () => {
                   className={`w-full py-4 px-6 rounded-2xl font-bold text-lg shadow-lg transition-all flex items-center justify-center transform active:scale-[0.98] ${
                     canGenerate 
                     ? 'bg-gradient-to-r from-primary to-purple-600 text-white hover:shadow-xl hover:shadow-primary/20' 
-                    : 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
+                    : 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-600 cursor-not-allowed'
                   }`}
                 >
                   {isLoading ? (
                      <>
                       <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2"></div>
-                      Weaving Fabric...
+                      {generationStatus}
                      </>
                   ) : (
                      <>
@@ -458,16 +760,15 @@ const App: React.FC = () => {
 
                   {resultImage ? (
                     <div className="relative w-full h-full">
-                       <img 
+                       <ZoomableImage 
                          src={resultImage} 
                          alt="Result" 
-                         className="w-full h-auto object-contain max-h-[70vh]"
                        />
-                       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex space-x-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex space-x-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
                           <a 
                             href={resultImage}
                             download="styleai-result.jpg"
-                            className="bg-white/90 dark:bg-black/90 text-slate-900 dark:text-white p-3 rounded-full shadow-lg hover:scale-110 transition-transform"
+                            className="bg-white/90 dark:bg-black/90 text-slate-900 dark:text-white p-3 rounded-full shadow-lg hover:scale-110 transition-transform pointer-events-auto"
                             title="Download"
                           >
                             <Download className="w-5 h-5" />
@@ -482,15 +783,15 @@ const App: React.FC = () => {
                               <div className="absolute inset-0 border-4 border-slate-100 dark:border-slate-800 rounded-full"></div>
                               <div className="absolute inset-0 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
                             </div>
-                            <p className="text-slate-500 font-medium animate-pulse">AI is generating your look...</p>
+                            <p className="text-slate-500 dark:text-slate-400 font-medium animate-pulse">{generationStatus}</p>
                          </div>
                        ) : (
                          <div className="flex flex-col items-center opacity-50">
                             <div className="bg-slate-100 dark:bg-slate-800 p-6 rounded-full mb-4">
-                               <Sparkles className="w-10 h-10 text-slate-400" />
+                               <Sparkles className="w-10 h-10 text-slate-400 dark:text-slate-500" />
                             </div>
                             <h3 className="text-lg font-bold text-slate-700 dark:text-slate-300">Ready to Create</h3>
-                            <p className="text-sm text-slate-400 max-w-[200px] mt-2">
+                            <p className="text-sm text-slate-400 dark:text-slate-500 max-w-[200px] mt-2">
                               Select a model and some clothes, then hit Generate to see the magic.
                             </p>
                          </div>

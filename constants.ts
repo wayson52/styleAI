@@ -97,6 +97,18 @@ export const SAMPLE_PETS: Sample[] = [
     name: 'White Persian',
     url: 'https://images.unsplash.com/photo-1513245543132-31f507417b26?q=80&w=1000&auto=format&fit=crop',
     category: 'Cat'
+  },
+  {
+    id: 'pet-7',
+    name: 'Husky',
+    url: 'https://images.unsplash.com/photo-1560525821-d5615ef80c69?q=80&w=1000&auto=format&fit=crop',
+    category: 'Dog'
+  },
+  {
+    id: 'pet-8',
+    name: 'Siamese Cat',
+    url: 'https://images.unsplash.com/photo-1513360371669-4adf3dd7dff8?q=80&w=1000&auto=format&fit=crop',
+    category: 'Cat'
   }
 ];
 
@@ -168,6 +180,34 @@ export const SAMPLE_TOPS: Sample[] = [
     id: 'top-10',
     name: 'Blue Blazer',
     url: 'https://images.unsplash.com/photo-1598808503746-f34c53b9323e?q=80&w=1000&auto=format&fit=crop',
+    gender: 'male',
+    category: 'Formal'
+  },
+  {
+    id: 'top-11',
+    name: 'Striped Polo',
+    url: 'https://images.unsplash.com/photo-1625910515337-17d7993ca1ef?q=80&w=1000&auto=format&fit=crop',
+    gender: 'male',
+    category: 'Casual'
+  },
+  {
+    id: 'top-12',
+    name: 'Oversized Tee',
+    url: 'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?q=80&w=1000&auto=format&fit=crop',
+    gender: 'female',
+    category: 'Streetwear'
+  },
+  {
+    id: 'top-13',
+    name: 'Turtleneck',
+    url: 'https://images.unsplash.com/photo-1580331451062-99ff652288d7?q=80&w=1000&auto=format&fit=crop',
+    gender: 'unisex',
+    category: 'Winter'
+  },
+  {
+    id: 'top-14',
+    name: 'Formal Vest',
+    url: 'https://images.unsplash.com/photo-1594938298603-c8148c4dae35?q=80&w=1000&auto=format&fit=crop',
     gender: 'male',
     category: 'Formal'
   }
@@ -243,6 +283,27 @@ export const SAMPLE_BOTTOMS: Sample[] = [
     url: 'https://images.unsplash.com/photo-1605518216938-7f31b471871e?q=80&w=1000&auto=format&fit=crop',
     gender: 'unisex',
     category: 'Streetwear'
+  },
+  {
+    id: 'bottom-11',
+    name: 'Pencil Skirt',
+    url: 'https://images.unsplash.com/photo-1582142327524-f8d5e786f689?q=80&w=1000&auto=format&fit=crop',
+    gender: 'female',
+    category: 'Formal'
+  },
+  {
+    id: 'bottom-12',
+    name: 'Yoga Leggings',
+    url: 'https://images.unsplash.com/photo-1506619216599-9d16d0903dfd?q=80&w=1000&auto=format&fit=crop',
+    gender: 'female',
+    category: 'Sport'
+  },
+  {
+    id: 'bottom-13',
+    name: 'Corduroy Pants',
+    url: 'https://images.unsplash.com/photo-1582552938357-32b906df40cb?q=80&w=1000&auto=format&fit=crop',
+    gender: 'unisex',
+    category: 'Casual'
   }
 ];
 
@@ -276,5 +337,124 @@ export const SAMPLE_PET_OUTFITS: Sample[] = [
     name: 'Denim Vest',
     url: 'https://images.unsplash.com/photo-1593423057710-8a2fa73a4b76?q=80&w=1000&auto=format&fit=crop',
     category: 'Streetwear'
+  },
+  {
+    id: 'pet-outfit-6',
+    name: 'Party Hat',
+    url: 'https://images.unsplash.com/photo-1533738363-b7f9aef128ce?q=80&w=1000&auto=format&fit=crop',
+    category: 'Costume'
+  },
+  {
+    id: 'pet-outfit-7',
+    name: 'Plaid Bandana',
+    url: 'https://images.unsplash.com/photo-1568393691622-c7ba7815bc41?q=80&w=1000&auto=format&fit=crop',
+    category: 'Casual'
+  },
+  {
+    id: 'pet-outfit-8',
+    name: 'Halloween Ghost',
+    url: 'https://images.unsplash.com/photo-1605639156481-244775d6f803?q=80&w=1000&auto=format&fit=crop',
+    category: 'Costume'
   }
+];
+
+// --- RANDOMIZATION QUERIES ---
+
+export const RANDOM_MODEL_QUERIES = [
+  "Chinese street fashion model full body",
+  "Korean fashion model street style",
+  "Japanese fashion model portrait",
+  "Stylish person full body outfit",
+  "Fashion model runway walking",
+  "Casual lifestyle portrait full body",
+  "Business professional full body portrait",
+  "Athleisure fashion model posing",
+  "Vintage fashion style model",
+  "Modern minimalist fashion model",
+  "Avant-garde fashion photography",
+  "Bohemian style fashion model",
+  "Denim street style model",
+  "High fashion editorial portrait",
+  "Urban chic style model",
+  "Preppy fashion style model"
+];
+
+export const RANDOM_TOP_QUERIES = [
+  "Trendy graphic t-shirt",
+  "Luxury silk blouse",
+  "Vintage denim jacket",
+  "Oversized hoodie streetwear",
+  "Summer floral crop top",
+  "Men's plaid flannel shirt",
+  "Designer knit sweater",
+  "Leather biker jacket",
+  "Formal dress shirt",
+  "Stylish tank top",
+  "Embroidered bomber jacket",
+  "Chunky cable knit cardigan",
+  "Sheer organza top",
+  "Velvet blazer jacket",
+  "Tie-dye t-shirt vintage",
+  "Satin camisole top",
+  "Puffer jacket trendy",
+  "Graphic sweatshirt vintage"
+];
+
+export const RANDOM_BOTTOM_QUERIES = [
+  "Wide leg denim jeans",
+  "Pleated midi skirt",
+  "Cargo pants streetwear",
+  "Formal suit trousers",
+  "High waisted shorts",
+  "Aesthetic sweatpants",
+  "Leather mini skirt",
+  "Chino pants beige",
+  "Flowy maxi skirt",
+  "Distressed skinny jeans",
+  "Corduroy trousers vintage",
+  "Silk slip skirt",
+  "Biker shorts athletic",
+  "Plaid wool skirt",
+  "Linen trousers summer",
+  "Jogger pants streetwear",
+  "Velvet trousers",
+  "Denim overall shorts"
+];
+
+export const RANDOM_PET_QUERIES = [
+  "Golden Retriever dog full body",
+  "British Shorthair cat cute",
+  "Samoyed dog fluffy",
+  "Ragdoll cat sitting",
+  "French Bulldog standing",
+  "Shiba Inu dog cute",
+  "Maine Coon cat full body",
+  "Corgi dog happy",
+  "Border Collie dog running",
+  "Siamese cat portrait",
+  "Pomeranian dog fluffy",
+  "Scottish Fold cat",
+  "Beagle dog standing",
+  "Persian cat white",
+  "Dachshund dog",
+  "Bengal cat"
+];
+
+export const RANDOM_PET_OUTFIT_QUERIES = [
+  "Dog superhero costume",
+  "Cat tuxedo formal",
+  "Dog winter knit sweater",
+  "Funny pet costume halloween",
+  "Cat lion mane costume",
+  "Dog denim vest",
+  "Pet raincoat yellow",
+  "Cute pet bandana",
+  "Dog bow tie collar",
+  "Cat shark costume",
+  "Dog pirate costume",
+  "Cat dinosaur costume",
+  "Pet santa claus outfit",
+  "Dog jersey sport",
+  "Cat princess dress",
+  "Dog aviator hat"
 ];

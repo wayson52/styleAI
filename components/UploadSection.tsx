@@ -1,5 +1,6 @@
+
 import React, { useRef, useState, useMemo } from 'react';
-import { Upload, Camera, X, RefreshCcw, CheckCircle2, Link, ArrowRight, ChevronDown, ChevronUp, Search, Loader2 } from 'lucide-react';
+import { Upload, Camera, X, RefreshCcw, CheckCircle2, Link, ArrowRight, ChevronDown, ChevronUp, Search, Loader2, Dice5 } from 'lucide-react';
 import { Sample } from '../types';
 
 interface UploadSectionProps {
@@ -8,12 +9,14 @@ interface UploadSectionProps {
   samples: Sample[];
   onSelect: (url: string) => void;
   onSearch?: (query: string) => Promise<void>;
+  onRandomize?: () => Promise<void>;
   className?: string;
   compact?: boolean;
   selectedUrl?: string | null;
   enableCategoryFilter?: boolean;
   enableGenderFilter?: boolean;
   initialVisibleCount?: number;
+  isLoading?: boolean;
 }
 
 export const UploadSection: React.FC<UploadSectionProps> = ({
@@ -22,12 +25,14 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
   samples,
   onSelect,
   onSearch,
+  onRandomize,
   className = "",
   compact = false,
   selectedUrl,
   enableCategoryFilter = true,
   enableGenderFilter = true,
-  initialVisibleCount = 8
+  initialVisibleCount = 8,
+  isLoading = false
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -38,6 +43,10 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
   const [inputValue, setInputValue] = useState('');
   const [isExpanded, setIsExpanded] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+  const [isRandomizing, setIsRandomizing] = useState(false);
+  
+  // Collapsed state for samples
+  const [showSamples, setShowSamples] = useState(false);
 
   // Filter State
   const [filterGender, setFilterGender] = useState<'all' | 'male' | 'female'>('all');
@@ -137,12 +146,26 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
       onSelect(value);
       setInputValue('');
     } else if (onSearch) {
-      // It's a search query
+      // It's a search query - Expand samples to show results
+      setShowSamples(true);
       setIsSearching(true);
       try {
         await onSearch(value);
       } finally {
         setIsSearching(false);
+      }
+    }
+  };
+
+  const handleRandomizeClick = async () => {
+    // Expand samples when user wants to see random ones
+    setShowSamples(true);
+    if (onRandomize && !isRandomizing) {
+      setIsRandomizing(true);
+      try {
+        await onRandomize();
+      } finally {
+        setIsRandomizing(false);
       }
     }
   };
@@ -179,8 +202,8 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
     });
   }, [samples, filterGender, filterCategory, enableCategoryFilter, enableGenderFilter]);
 
-  const showGenderFilter = enableGenderFilter && (availableGenders.hasMale || availableGenders.hasFemale);
-  const showCategoryFilter = enableCategoryFilter && availableCategories.length > 2; // 'All' + at least 2 categories
+  const showGenderFilter = !isLoading && enableGenderFilter && (availableGenders.hasMale || availableGenders.hasFemale);
+  const showCategoryFilter = !isLoading && enableCategoryFilter && availableCategories.length > 2; // 'All' + at least 2 categories
 
   // Expand/Collapse Logic for Samples
   const visibleSamples = isExpanded || !compact ? filteredSamples : filteredSamples.slice(0, initialVisibleCount);
@@ -205,16 +228,19 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
   return (
     <div className={`bg-white dark:bg-slate-800 rounded-2xl shadow-lg transition-colors duration-300 flex flex-col ${compact ? 'p-4 md:p-5' : 'p-8 w-full max-w-3xl mx-auto'} ${className}`}>
       <div className="flex items-center justify-between mb-2">
-        <h2 className={`${compact ? 'text-lg' : 'text-2xl'} font-bold text-slate-800 dark:text-white`}>{title}</h2>
+        <div className="flex items-center gap-2">
+            <h2 className={`${compact ? 'text-lg' : 'text-2xl'} font-bold text-slate-800 dark:text-slate-100`}>{title}</h2>
+        </div>
+        
         {selectedUrl && compact && (
-          <div className="bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 px-2 py-1 rounded-full text-xs flex items-center font-medium">
+          <div className="bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 px-2 py-1 rounded-full text-xs flex items-center font-medium border border-green-200 dark:border-green-800">
             <CheckCircle2 className="w-3 h-3 mr-1" /> Selected
           </div>
         )}
       </div>
       
       {description && (
-        <p className={`text-slate-500 dark:text-slate-400 ${compact ? 'text-xs mb-4' : 'mb-6'}`}>{description}</p>
+        <p className={`text-slate-500 dark:text-slate-300 ${compact ? 'text-xs mb-4' : 'mb-6'}`}>{description}</p>
       )}
 
       {/* Selected Preview (Only in compact mode) */}
@@ -223,7 +249,7 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
           <img src={selectedUrl} alt="Selected" className="h-full w-full object-cover" />
           <button 
             onClick={() => onSelect('')} 
-            className="absolute top-2 right-2 bg-black/50 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10 cursor-pointer"
+            className="absolute top-2 right-2 bg-black/60 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10 cursor-pointer hover:bg-black/80"
           >
             <X className="w-4 h-4" />
           </button>
@@ -269,7 +295,7 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
               {/* File Upload Trigger */}
               <div 
                 onClick={() => fileInputRef.current?.click()}
-                className={`flex-1 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl flex flex-col items-center justify-center cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:border-primary dark:hover:border-primary transition-all duration-300 group ${compact ? 'p-4 min-h-[100px]' : 'p-10'}`}
+                className={`flex-1 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl flex flex-col items-center justify-center cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-primary dark:hover:border-primary transition-all duration-300 group ${compact ? 'p-4 min-h-[100px]' : 'p-10'}`}
               >
                 <input 
                   type="file" 
@@ -279,22 +305,22 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
                   className="hidden" 
                 />
                 <div className={`bg-slate-100 dark:bg-slate-700 rounded-full mb-2 group-hover:bg-blue-50 dark:group-hover:bg-slate-600 transition-colors ${compact ? 'p-2' : 'p-4 mb-4'}`}>
-                  <Upload className={`${compact ? 'w-5 h-5' : 'w-8 h-8'} text-slate-600 dark:text-slate-300 group-hover:text-primary`} />
+                  <Upload className={`${compact ? 'w-5 h-5' : 'w-8 h-8'} text-slate-600 dark:text-slate-300 group-hover:text-primary dark:group-hover:text-primary`} />
                 </div>
                 {!compact && <p className="font-medium text-slate-700 dark:text-slate-200 text-lg">Upload Photo</p>}
-                <p className={`text-slate-400 dark:text-slate-500 text-center ${compact ? 'text-xs' : 'text-sm mt-2'}`}>{compact ? 'Upload' : 'SVG, PNG, JPG or GIF'}</p>
+                <p className={`text-slate-400 dark:text-slate-400 text-center ${compact ? 'text-xs' : 'text-sm mt-2'}`}>{compact ? 'Upload' : 'SVG, PNG, JPG or GIF'}</p>
               </div>
 
               {/* Camera Trigger */}
               <div 
                 onClick={startCamera}
-                className={`flex-1 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl flex flex-col items-center justify-center cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:border-secondary dark:hover:border-secondary transition-all duration-300 group ${compact ? 'p-4 min-h-[100px]' : 'p-10'}`}
+                className={`flex-1 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl flex flex-col items-center justify-center cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-secondary dark:hover:border-secondary transition-all duration-300 group ${compact ? 'p-4 min-h-[100px]' : 'p-10'}`}
               >
                 <div className={`bg-slate-100 dark:bg-slate-700 rounded-full mb-2 group-hover:bg-green-50 dark:group-hover:bg-slate-600 transition-colors ${compact ? 'p-2' : 'p-4 mb-4'}`}>
-                  <Camera className={`${compact ? 'w-5 h-5' : 'w-8 h-8'} text-slate-600 dark:text-slate-300 group-hover:text-secondary`} />
+                  <Camera className={`${compact ? 'w-5 h-5' : 'w-8 h-8'} text-slate-600 dark:text-slate-300 group-hover:text-secondary dark:group-hover:text-secondary`} />
                 </div>
                 {!compact && <p className="font-medium text-slate-700 dark:text-slate-200 text-lg">Use Camera</p>}
-                <p className={`text-slate-400 dark:text-slate-500 text-center ${compact ? 'text-xs' : 'text-sm mt-2'}`}>{compact ? 'Camera' : 'Take a photo now'}</p>
+                <p className={`text-slate-400 dark:text-slate-400 text-center ${compact ? 'text-xs' : 'text-sm mt-2'}`}>{compact ? 'Camera' : 'Take a photo now'}</p>
               </div>
             </div>
             
@@ -303,9 +329,9 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
                 <div className="relative flex items-center">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
                         {onSearch && !inputValue.startsWith('http') ? (
-                            <Search className={`text-slate-400 ${compact ? 'w-4 h-4' : 'w-5 h-5'}`} />
+                            <Search className={`text-slate-400 dark:text-slate-300 ${compact ? 'w-4 h-4' : 'w-5 h-5'}`} />
                         ) : (
-                            <Link className={`text-slate-400 ${compact ? 'w-4 h-4' : 'w-5 h-5'}`} />
+                            <Link className={`text-slate-400 dark:text-slate-300 ${compact ? 'w-4 h-4' : 'w-5 h-5'}`} />
                         )}
                     </div>
                     <input
@@ -313,8 +339,8 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
                         placeholder={onSearch ? "Google Search images or paste URL..." : "Paste image URL..."}
-                        className={`block w-full rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent transition-all relative z-0 ${compact ? 'pl-9 pr-16 py-2 text-sm' : 'pl-10 pr-20 py-3'}`}
-                        disabled={isSearching}
+                        className={`block w-full rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/60 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent transition-all relative z-0 placeholder:text-slate-400 dark:placeholder:text-slate-400 ${compact ? 'pl-9 pr-16 py-2 text-sm' : 'pl-10 pr-20 py-3'}`}
+                        disabled={isSearching || isLoading}
                     />
                     
                     {/* Clear Button */}
@@ -322,7 +348,7 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
                       <button
                         type="button"
                         onClick={() => setInputValue('')}
-                        className={`absolute right-10 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-full z-10 ${compact ? 'right-9' : 'right-12'}`}
+                        className={`absolute right-10 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:text-slate-400 dark:hover:text-slate-200 p-1 rounded-full z-10 ${compact ? 'right-9' : 'right-12'}`}
                       >
                         <X className={`${compact ? 'w-3 h-3' : 'w-4 h-4'}`} />
                       </button>
@@ -331,7 +357,7 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
                     {/* Submit Button */}
                      <button 
                         type="submit"
-                        disabled={!inputValue.trim() || isSearching}
+                        disabled={!inputValue.trim() || isSearching || isLoading}
                         className={`absolute right-1 top-1 bottom-1 bg-primary text-white rounded-lg flex items-center justify-center transition-all z-10 cursor-pointer hover:bg-primary/90 ${!inputValue.trim() ? 'opacity-0 pointer-events-none scale-90' : 'opacity-100 scale-100'} ${compact ? 'w-7' : 'w-10'}`}
                         title="Submit"
                     >
@@ -347,124 +373,163 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
         ) : null
       )}
 
-      {/* Divider */}
+      {/* Divider / Toggle Button */}
       <div className="relative flex items-center justify-center mb-4">
         <hr className="w-full border-slate-200 dark:border-slate-700" />
-        <span className={`absolute bg-white dark:bg-slate-800 px-2 text-slate-400 font-medium uppercase ${compact ? 'text-[10px]' : 'text-xs'}`}>
-           {isSearching ? 'Searching...' : 'Or select sample'}
-        </span>
+        <button 
+            onClick={() => setShowSamples(!showSamples)}
+            className="absolute bg-white dark:bg-slate-800 px-3 py-1 rounded-full border border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-300 text-xs font-medium hover:text-primary dark:hover:text-primary hover:border-primary dark:hover:border-primary transition-colors flex items-center gap-2 shadow-sm z-10"
+        >
+           {showSamples ? (
+               isSearching ? <><Loader2 className="w-3 h-3 animate-spin" /> Searching...</> :
+               isLoading ? <><Loader2 className="w-3 h-3 animate-spin" /> Loading...</> :
+               <>Hide Samples <ChevronUp className="w-3 h-3" /></>
+           ) : (
+               <>
+                Select from Samples
+                {isLoading && <Loader2 className="w-3 h-3 animate-spin text-slate-400" />}
+                {!isLoading && <ChevronDown className="w-3 h-3" />}
+               </>
+           )}
+        </button>
       </div>
 
-      {/* Filters Section */}
-      {!isSearching && (
-        <div className="mb-4 space-y-3">
-            {/* Gender Tabs */}
-            {showGenderFilter && (
-            <div className="flex p-1 bg-slate-100 dark:bg-slate-700/50 rounded-lg w-full">
-                {(['all', 'male', 'female'] as const).map((gender) => (
-                <button
-                    key={gender}
-                    onClick={() => setFilterGender(gender)}
-                    className={`flex-1 py-1.5 text-xs font-medium rounded-md capitalize transition-all ${
-                    filterGender === gender 
-                        ? 'bg-white dark:bg-slate-600 text-primary shadow-sm' 
-                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
-                    }`}
-                >
-                    {gender}
-                </button>
-                ))}
-            </div>
-            )}
+      {/* Collapsible Samples Section */}
+      {showSamples && (
+        <div className="animate-in fade-in slide-in-from-top-2 duration-300 space-y-4">
+            {/* Controls Row: Filters & Shuffle */}
+            {!isSearching && !isLoading && (
+                <div className="flex items-start gap-2">
+                    <div className="flex-grow space-y-3">
+                        {/* Gender Tabs */}
+                        {showGenderFilter && (
+                        <div className="flex p-1 bg-slate-100 dark:bg-slate-700 rounded-lg w-full">
+                            {(['all', 'male', 'female'] as const).map((gender) => (
+                            <button
+                                key={gender}
+                                onClick={() => setFilterGender(gender)}
+                                className={`flex-1 py-1.5 text-xs font-medium rounded-md capitalize transition-all ${
+                                filterGender === gender 
+                                    ? 'bg-white dark:bg-slate-600 text-primary dark:text-primary-300 shadow-sm' 
+                                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                                }`}
+                            >
+                                {gender}
+                            </button>
+                            ))}
+                        </div>
+                        )}
 
-            {/* Category Pills - Expandable */}
-            {showCategoryFilter && (
-            <div className="flex flex-wrap gap-2">
-                {displayedCategories.map((cat) => (
-                <button
-                    key={cat}
-                    onClick={() => setFilterCategory(cat)}
-                    className={`px-3 py-1 rounded-full text-xs border transition-colors ${
-                    filterCategory === cat
-                        ? 'bg-primary/10 border-primary text-primary font-semibold'
-                        : 'border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
-                    }`}
-                >
-                    {cat}
-                </button>
-                ))}
-                {hasMoreCategories && (
-                <button 
-                    onClick={() => setIsCategoryExpanded(!isCategoryExpanded)}
-                    className="px-2 py-1 text-xs font-medium text-primary hover:text-primary/80 flex items-center transition-colors"
-                >
-                    {isCategoryExpanded ? (
-                        <>Less <ChevronUp className="w-3 h-3 ml-1" /></>
-                    ) : (
-                        <>{`+${availableCategories.length - VISIBLE_CATEGORY_COUNT} more`}</>
-                    )}
-                </button>
-                )}
-            </div>
-            )}
-        </div>
-      )}
-
-      {/* Samples Grid */}
-      {isSearching ? (
-         <div className="py-12 flex flex-col items-center justify-center text-slate-400">
-            <Loader2 className="w-8 h-8 animate-spin mb-3 text-primary" />
-            <p className="text-sm">Finding best matches...</p>
-         </div>
-      ) : (
-        <div className="flex flex-col gap-4">
-            {filteredSamples.length > 0 ? (
-            <div className={`grid ${compact ? 'grid-cols-3 gap-2' : 'grid-cols-2 sm:grid-cols-4 gap-4'}`}>
-                {visibleSamples.map((sample) => (
-                <div 
-                    key={sample.id}
-                    onClick={() => onSelect(sample.url)}
-                    className={`relative group cursor-pointer rounded-lg overflow-hidden border-2 transition-all shadow-sm hover:shadow-md ${selectedUrl === sample.url ? 'border-primary ring-2 ring-primary/20' : 'border-transparent hover:border-primary'}`}
-                >
-                    <img 
-                    src={sample.url} 
-                    alt={sample.name} 
-                    className={`w-full object-cover transition-transform duration-500 group-hover:scale-110 ${compact ? 'h-20' : 'h-32'}`} 
-                    onError={(e) => {
-                        // If image fails to load (e.g. CORS or broken link), hide it
-                        (e.target as HTMLImageElement).style.display = 'none';
-                        (e.target as HTMLImageElement).parentElement!.style.display = 'none';
-                    }}
-                    />
-                    {/* Hover Overlay Name */}
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2">
-                        <span className="text-white text-[10px] font-medium truncate w-full">{sample.name}</span>
+                        {/* Category Pills - Expandable */}
+                        {showCategoryFilter && (
+                        <div className="flex flex-wrap gap-2">
+                            {displayedCategories.map((cat) => (
+                            <button
+                                key={cat}
+                                onClick={() => setFilterCategory(cat)}
+                                className={`px-3 py-1 rounded-full text-xs border transition-colors ${
+                                filterCategory === cat
+                                    ? 'bg-primary/10 border-primary text-primary dark:text-primary-400 font-semibold'
+                                    : 'border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
+                                }`}
+                            >
+                                {cat}
+                            </button>
+                            ))}
+                            {hasMoreCategories && (
+                            <button 
+                                onClick={() => setIsCategoryExpanded(!isCategoryExpanded)}
+                                className="px-2 py-1 text-xs font-medium text-primary hover:text-primary/80 flex items-center transition-colors"
+                            >
+                                {isCategoryExpanded ? (
+                                    <>Less <ChevronUp className="w-3 h-3 ml-1" /></>
+                                ) : (
+                                    <>{`+${availableCategories.length - VISIBLE_CATEGORY_COUNT} more`}</>
+                                )}
+                            </button>
+                            )}
+                        </div>
+                        )}
                     </div>
+                    
+                    {/* Shuffle Button */}
+                    {onRandomize && (
+                        <button 
+                            onClick={handleRandomizeClick}
+                            disabled={isRandomizing || isLoading}
+                            className="p-2 rounded-lg bg-slate-100 dark:bg-slate-700 hover:bg-primary hover:text-white dark:hover:bg-primary transition-all text-slate-500 dark:text-slate-300 flex-shrink-0 border border-slate-200 dark:border-slate-600"
+                            title="Shuffle & Find New Samples"
+                        >
+                            <Dice5 className={`w-4 h-4 ${isRandomizing || isLoading ? 'animate-spin' : ''}`} />
+                        </button>
+                    )}
                 </div>
-                ))}
-            </div>
-            ) : (
-            <div className="text-center py-8 text-slate-400 text-sm">
-                No samples match filters.
-            </div>
             )}
 
-            {/* Expand/Collapse Button for Samples */}
-            {hasMoreSamples && compact && (
-            <button 
-                onClick={() => setIsExpanded(!isExpanded)}
-                className="w-full py-2 text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-primary dark:hover:text-primary flex items-center justify-center bg-slate-50 dark:bg-slate-700/30 hover:bg-slate-100 dark:hover:bg-slate-700/50 rounded-lg transition-colors"
-            >
-                {isExpanded ? (
-                <>
-                    <ChevronUp className="w-4 h-4 mr-1" /> Show Less
-                </>
-                ) : (
-                <>
-                    <ChevronDown className="w-4 h-4 mr-1" /> Show +{remainingCount} more
-                </>
-                )}
-            </button>
+            {/* Samples Grid */}
+            {isSearching ? (
+                <div className="py-8 flex flex-col items-center justify-center text-slate-400 dark:text-slate-300">
+                    <Loader2 className="w-8 h-8 animate-spin mb-3 text-primary" />
+                    <p className="text-sm">Finding best matches...</p>
+                </div>
+            ) : isLoading ? (
+                // Skeleton Loading State
+                <div className={`grid ${compact ? 'grid-cols-3 gap-2' : 'grid-cols-2 sm:grid-cols-4 gap-4'}`}>
+                    {[...Array(initialVisibleCount)].map((_, i) => (
+                        <div key={i} className={`relative rounded-lg overflow-hidden border-2 border-transparent bg-slate-100 dark:bg-slate-700 animate-pulse ${compact ? 'h-20' : 'h-32'}`}></div>
+                    ))}
+                </div>
+            ) : (
+                <div className="flex flex-col gap-4">
+                    {filteredSamples.length > 0 ? (
+                    <div className={`grid ${compact ? 'grid-cols-3 gap-2' : 'grid-cols-2 sm:grid-cols-4 gap-4'}`}>
+                        {visibleSamples.map((sample) => (
+                        <div 
+                            key={sample.id}
+                            onClick={() => onSelect(sample.url)}
+                            className={`relative group cursor-pointer rounded-lg overflow-hidden border-2 transition-all shadow-sm hover:shadow-md ${selectedUrl === sample.url ? 'border-primary ring-2 ring-primary/20' : 'border-transparent hover:border-primary'}`}
+                        >
+                            <img 
+                            src={sample.url} 
+                            alt={sample.name} 
+                            className={`w-full object-cover transition-transform duration-500 group-hover:scale-110 ${compact ? 'h-20' : 'h-32'}`} 
+                            onError={(e) => {
+                                // If image fails to load (e.g. CORS or broken link), hide it
+                                (e.target as HTMLImageElement).style.display = 'none';
+                                (e.target as HTMLImageElement).parentElement!.style.display = 'none';
+                            }}
+                            />
+                            {/* Hover Overlay Name */}
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2">
+                                <span className="text-white text-[10px] font-medium truncate w-full">{sample.name}</span>
+                            </div>
+                        </div>
+                        ))}
+                    </div>
+                    ) : (
+                    <div className="text-center py-8 text-slate-400 dark:text-slate-500 text-sm">
+                        No samples match filters.
+                    </div>
+                    )}
+
+                    {/* Expand/Collapse Button for Samples */}
+                    {hasMoreSamples && compact && (
+                    <button 
+                        onClick={() => setIsExpanded(!isExpanded)}
+                        className="w-full py-2 text-xs font-medium text-slate-500 dark:text-slate-300 hover:text-primary dark:hover:text-primary flex items-center justify-center bg-slate-50 dark:bg-slate-700/30 hover:bg-slate-100 dark:hover:bg-slate-700/50 rounded-lg transition-colors"
+                    >
+                        {isExpanded ? (
+                        <>
+                            <ChevronUp className="w-4 h-4 mr-1" /> Show Less
+                        </>
+                        ) : (
+                        <>
+                            <ChevronDown className="w-4 h-4 mr-1" /> Show +{remainingCount} more
+                        </>
+                        )}
+                    </button>
+                    )}
+                </div>
             )}
         </div>
       )}
