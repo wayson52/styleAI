@@ -139,31 +139,27 @@ export const searchImages = async (query: string): Promise<Sample[]> => {
 
     const ai = new GoogleGenAI({ apiKey });
     
-    // NOTE: Google Search Tool cannot be used with responseMimeType: "application/json"
-    // We rely on the prompt to structure the data.
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: `
-      Perform a Google Image Search for "${query}".
-      Find at least 12 distinct, high-quality image URLs representing "${query}".
+      Task: Find 12 real, accessible image URLs for the search query: "${query}".
       
-      Prioritize:
-      1. Direct image links (ending in .jpg, .png, .jpeg).
-      2. Images from accessible public sources (e.g., Wikimedia, public stock sites, news sites).
-      3. Images that clearly show the subject (full body or portrait if it's a person/animal).
-
-      OUTPUT FORMAT:
-      Provide a strictly valid JSON array of objects.
-      Use DOUBLE QUOTES for keys and string values.
-      Do not use single quotes.
+      Instructions:
+      1. Use Google Search to find high-quality images matching the query.
+      2. Extract the direct URL for each image found.
+      3. Format the output as a strict JSON array of objects.
       
-      JSON Structure:
+      Constraints:
+      - Prioritize URLs ending in .jpg, .png, .jpeg, .webp.
+      - Avoid placeholder URLs or generic site links; look for the actual image source.
+      - Do NOT output markdown formatting (like \`\`\`json). Just return the raw JSON string.
+      - If you find fewer than 12, return as many valid ones as possible.
+      
+      JSON Format:
       [
-        { "id": "1", "name": "Short description", "url": "https://example.com/image.jpg" },
-        ...
+        { "id": "unique_id_1", "name": "Short descriptive title", "url": "https://site.com/image.jpg" },
+        { "id": "unique_id_2", "name": "Short descriptive title", "url": "https://site.com/other.png" }
       ]
-      
-      Return ONLY the JSON array. Do not include markdown formatting if possible, but if you do, use a json code block.
       `,
       config: {
         tools: [{ googleSearch: {} }],
@@ -176,13 +172,20 @@ export const searchImages = async (query: string): Promise<Sample[]> => {
       const data = extractJSON(text);
       
       if (Array.isArray(data)) {
-        return data.map((item: any, index: number) => ({
-          id: item.id || `search-${index}-${Date.now()}`,
-          name: item.name || query,
-          url: item.url,
-          category: 'Search Result',
-          gender: 'unisex' as const
-        })).filter((item: any) => item.url && item.url.startsWith('http')) as Sample[];
+        const validSamples = data
+          .filter((item: any) => item.url && item.url.startsWith('http'))
+          .map((item: any, index: number) => ({
+            id: item.id || `search-${index}-${Date.now()}`,
+            name: item.name || query,
+            url: item.url,
+            category: 'Search Result',
+            gender: 'unisex' as const
+          }));
+          
+        if (validSamples.length === 0) {
+            console.warn("Search returned 0 valid URLs.");
+        }
+        return validSamples as Sample[];
       } else {
         console.warn("Parsed data is not an array:", data);
         return [];

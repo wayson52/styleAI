@@ -1,7 +1,8 @@
 
-import React, { useRef, useState, useMemo } from 'react';
+import React, { useRef, useState, useMemo, useEffect } from 'react';
 import { Upload, Camera, X, RefreshCcw, CheckCircle2, Link, ArrowRight, ChevronDown, ChevronUp, Search, Loader2, Dice5, Clipboard } from 'lucide-react';
 import { Sample } from '../types';
+import { TranslationSchema } from '../translations';
 
 interface UploadSectionProps {
   title: string;
@@ -17,6 +18,8 @@ interface UploadSectionProps {
   enableGenderFilter?: boolean;
   initialVisibleCount?: number;
   isLoading?: boolean;
+  defaultCameraFacingMode?: 'user' | 'environment';
+  labels: TranslationSchema['uploadLabels']; // Add labels prop
 }
 
 export const UploadSection: React.FC<UploadSectionProps> = ({
@@ -32,28 +35,34 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
   enableCategoryFilter = true,
   enableGenderFilter = true,
   initialVisibleCount = 8,
-  isLoading = false
+  isLoading = false,
+  defaultCameraFacingMode = 'user',
+  labels // Destructure labels
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   
   const [isCameraOpen, setIsCameraOpen] = useState(false);
-  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>(defaultCameraFacingMode);
   const [inputValue, setInputValue] = useState('');
   const [isExpanded, setIsExpanded] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [isRandomizing, setIsRandomizing] = useState(false);
   
-  // Collapsed state for samples
   const [showSamples, setShowSamples] = useState(false);
 
-  // Filter State
   const [filterGender, setFilterGender] = useState<'all' | 'male' | 'female'>('all');
   const [filterCategory, setFilterCategory] = useState<string>('All');
   const [isCategoryExpanded, setIsCategoryExpanded] = useState(false);
   
   const VISIBLE_CATEGORY_COUNT = 4;
+
+  const hasSamples = samples && samples.length > 0;
+
+  useEffect(() => {
+      setFacingMode(defaultCameraFacingMode);
+  }, [defaultCameraFacingMode]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -68,13 +77,11 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
     }
   };
 
-  // Handle pasting (Ctrl+V) on the container or input
   const handlePaste = (e: React.ClipboardEvent) => {
-    // 1. Check for image files in clipboard
     const items = e.clipboardData.items;
     for (let i = 0; i < items.length; i++) {
       if (items[i].type.indexOf('image') !== -1) {
-        e.preventDefault(); // Prevent pasting the binary string into text input
+        e.preventDefault();
         const blob = items[i].getAsFile();
         if (blob) {
           const reader = new FileReader();
@@ -87,8 +94,6 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
       }
     }
     
-    // 2. If it's text (and we are in the input), let default behavior happen or handle URL
-    // If we are NOT in the input (e.g. pasted on container div), check if it's a URL
     if (e.target !== document.activeElement?.closest('input')) {
          const text = e.clipboardData.getData('text');
          if (text && (text.startsWith('http') || text.startsWith('data:'))) {
@@ -97,12 +102,10 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
     }
   };
 
-  // Handle manual clipboard read (Button click)
   const handleClipboardRead = async () => {
     try {
         const items = await navigator.clipboard.read();
         for (const item of items) {
-            // Prioritize images
             const imageType = item.types.find(t => t.startsWith('image/'));
             if (imageType) {
                 const blob = await item.getType(imageType);
@@ -115,7 +118,6 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
             }
         }
         
-        // Fallback: Try reading text if no image
         const text = await navigator.clipboard.readText();
         if (text) {
             if (text.startsWith('http') || text.startsWith('data:')) {
@@ -133,7 +135,6 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
   const startCamera = async () => {
     try {
       setIsCameraOpen(true);
-      // Slight delay to allow UI to render video element
       setTimeout(async () => {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: facingMode }
@@ -185,7 +186,6 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
       canvas.height = videoRef.current.videoHeight;
       const ctx = canvas.getContext('2d');
       if (ctx) {
-        // Flip horizontally if using front camera for mirror effect
         if (facingMode === 'user') {
           ctx.translate(canvas.width, 0);
           ctx.scale(-1, 1);
@@ -203,12 +203,10 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
     const value = inputValue.trim();
     if (!value) return;
 
-    // Check if it's a URL
     if (value.startsWith('http://') || value.startsWith('https://') || value.startsWith('data:')) {
       onSelect(value);
       setInputValue('');
     } else if (onSearch) {
-      // It's a search query - Expand samples to show results
       setShowSamples(true);
       setIsSearching(true);
       try {
@@ -220,7 +218,6 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
   };
 
   const handleRandomizeClick = async () => {
-    // Expand samples when user wants to see random ones
     setShowSamples(true);
     if (onRandomize && !isRandomizing) {
       setIsRandomizing(true);
@@ -232,7 +229,6 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
     }
   };
 
-  // Filter Logic
   const availableGenders = useMemo(() => {
     const genders = new Set(samples.map(s => s.gender).filter(Boolean));
     return {
@@ -243,42 +239,37 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
 
   const availableCategories = useMemo(() => {
     const cats = new Set(samples.map(s => s.category).filter(Boolean));
-    return ['All', ...Array.from(cats).sort()];
-  }, [samples]);
+    return [labels.filterAll, ...Array.from(cats).sort()];
+  }, [samples, labels.filterAll]);
 
   const filteredSamples = useMemo(() => {
     return samples.filter(sample => {
-      // Gender Filter (Unisex shows for both)
       if (enableGenderFilter && filterGender !== 'all') {
         if (sample.gender && sample.gender !== 'unisex' && sample.gender !== filterGender) {
           return false;
         }
       }
-      // Category Filter
-      if (enableCategoryFilter && filterCategory !== 'All') {
+      if (enableCategoryFilter && filterCategory !== labels.filterAll && filterCategory !== 'All') {
         if (sample.category && sample.category !== filterCategory) {
           return false;
         }
       }
       return true;
     });
-  }, [samples, filterGender, filterCategory, enableCategoryFilter, enableGenderFilter]);
+  }, [samples, filterGender, filterCategory, enableCategoryFilter, enableGenderFilter, labels.filterAll]);
 
   const showGenderFilter = !isLoading && enableGenderFilter && (availableGenders.hasMale || availableGenders.hasFemale);
-  const showCategoryFilter = !isLoading && enableCategoryFilter && availableCategories.length > 2; // 'All' + at least 2 categories
+  const showCategoryFilter = !isLoading && enableCategoryFilter && availableCategories.length > 2;
 
-  // Expand/Collapse Logic for Samples
   const visibleSamples = isExpanded || !compact ? filteredSamples : filteredSamples.slice(0, initialVisibleCount);
   const hasMoreSamples = filteredSamples.length > initialVisibleCount;
   const remainingCount = filteredSamples.length - initialVisibleCount;
 
-  // Expand/Collapse Logic for Categories
   const displayedCategories = isCategoryExpanded 
     ? availableCategories 
     : availableCategories.slice(0, VISIBLE_CATEGORY_COUNT);
   const hasMoreCategories = availableCategories.length > VISIBLE_CATEGORY_COUNT;
 
-  // Cleanup on unmount
   React.useEffect(() => {
     return () => {
       if (streamRef.current) {
@@ -288,19 +279,63 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
   }, []);
 
   return (
+    <>
+    {isCameraOpen && (
+        <div className="fixed inset-0 z-[100] bg-black flex flex-col animate-in fade-in duration-200">
+            <video 
+                ref={videoRef} 
+                autoPlay 
+                playsInline 
+                className={`w-full h-full object-cover ${facingMode === 'user' ? 'scale-x-[-1]' : ''}`}
+            />
+            
+            <div className="absolute bottom-0 left-0 right-0 p-8 bg-gradient-to-t from-black/80 to-transparent flex justify-center items-center space-x-12 z-20 pb-safe">
+                 <button 
+                  onClick={stopCamera}
+                  className="p-4 bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white/30 transition-colors"
+                  title={labels.cameraClose}
+                >
+                  <X className="w-6 h-6" />
+                </button>
+                
+                <button 
+                  onClick={capturePhoto}
+                  className="w-20 h-20 bg-white rounded-full border-4 border-slate-300 flex items-center justify-center hover:scale-105 active:scale-95 transition-transform shadow-lg"
+                  title={labels.cameraCapture}
+                >
+                  <div className="w-16 h-16 bg-red-500 rounded-full border-2 border-white"></div>
+                </button>
+    
+                <button 
+                  onClick={switchCamera}
+                  className="p-4 bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white/30 transition-colors"
+                  title={labels.cameraSwitch}
+                >
+                  <RefreshCcw className="w-6 h-6" />
+                </button>
+            </div>
+
+            <div className="absolute top-0 left-0 right-0 p-6 flex justify-center pointer-events-none">
+                <div className="bg-black/50 backdrop-blur px-4 py-1 rounded-full text-white/90 text-sm font-medium">
+                    {compact ? labels.cameraInstructionItem : labels.cameraInstructionModel}
+                </div>
+            </div>
+        </div>
+    )}
+
     <div 
       className={`bg-white dark:bg-slate-800 rounded-2xl shadow-lg transition-colors duration-300 flex flex-col focus:outline-none ${compact ? 'p-4 md:p-5' : 'p-8 w-full max-w-3xl mx-auto'} ${className}`}
       onPaste={handlePaste}
-      tabIndex={0} // Make div focusable to accept paste events
+      tabIndex={0}
     >
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
-            <h2 className={`${compact ? 'text-lg' : 'text-2xl'} font-bold text-slate-800 dark:text-slate-100`}>{title}</h2>
+            <h2 className={`${compact ? 'text-lg' : 'text-2xl text-slate-800 dark:text-slate-200'} font-bold`}>{title}</h2>
         </div>
         
         {selectedUrl && compact && (
           <div className="bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 px-2 py-1 rounded-full text-xs flex items-center font-medium border border-green-200 dark:border-green-800">
-            <CheckCircle2 className="w-3 h-3 mr-1" /> Selected
+            <CheckCircle2 className="w-3 h-3 mr-1" /> {labels.selected}
           </div>
         )}
       </div>
@@ -309,8 +344,7 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
         <p className={`text-slate-500 dark:text-slate-300 ${compact ? 'text-xs mb-4' : 'mb-6'}`}>{description}</p>
       )}
 
-      {/* Selected Preview (Only in compact mode) */}
-      {compact && selectedUrl && !isCameraOpen && (
+      {compact && selectedUrl && (
         <div className="mb-4 relative group rounded-lg overflow-hidden h-40 bg-slate-100 dark:bg-slate-700 flex items-center justify-center border border-slate-200 dark:border-slate-600 shrink-0">
           <img src={selectedUrl} alt="Selected" className="h-full w-full object-cover" />
           <button 
@@ -322,46 +356,12 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
         </div>
       )}
 
-      {isCameraOpen ? (
-        <div className="relative bg-black rounded-xl overflow-hidden aspect-video mb-4 flex flex-col items-center justify-center flex-grow min-h-[200px]">
-          <video 
-            ref={videoRef} 
-            autoPlay 
-            playsInline 
-            className={`w-full h-full object-cover ${facingMode === 'user' ? 'scale-x-[-1]' : ''}`}
-          />
-          
-          <div className="absolute bottom-4 left-0 right-0 flex justify-center items-center space-x-6 z-10">
-             <button 
-              onClick={stopCamera}
-              className="p-2 bg-white/20 backdrop-blur-sm rounded-full text-white hover:bg-white/30 transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-            
-            <button 
-              onClick={capturePhoto}
-              className="w-12 h-12 bg-white rounded-full border-4 border-slate-300 flex items-center justify-center hover:scale-105 transition-transform shadow-lg"
-            >
-              <div className="w-10 h-10 bg-red-500 rounded-full"></div>
-            </button>
-
-            <button 
-              onClick={switchCamera}
-              className="p-2 bg-white/20 backdrop-blur-sm rounded-full text-white hover:bg-white/30 transition-colors"
-            >
-              <RefreshCcw className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-      ) : (
-        !selectedUrl || !compact ? (
+      {!selectedUrl || !compact ? (
           <>
-            <div className={`flex flex-col ${compact ? 'gap-2' : 'md:flex-row gap-4'} mb-4 md:mb-4`}>
-              {/* File Upload Trigger */}
+            <div className="grid grid-cols-2 gap-3 mb-4">
               <div 
                 onClick={() => fileInputRef.current?.click()}
-                className={`flex-1 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl flex flex-col items-center justify-center cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-primary dark:hover:border-primary transition-all duration-300 group ${compact ? 'p-4 min-h-[100px]' : 'p-10'}`}
+                className={`border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl flex flex-col items-center justify-center cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-primary dark:hover:border-primary transition-all duration-300 group ${compact ? 'p-4 min-h-[100px]' : 'p-10'}`}
               >
                 <input 
                   type="file" 
@@ -373,24 +373,22 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
                 <div className={`bg-slate-100 dark:bg-slate-700 rounded-full mb-2 group-hover:bg-blue-50 dark:group-hover:bg-slate-600 transition-colors ${compact ? 'p-2' : 'p-4 mb-4'}`}>
                   <Upload className={`${compact ? 'w-5 h-5' : 'w-8 h-8'} text-slate-600 dark:text-slate-300 group-hover:text-primary dark:group-hover:text-primary`} />
                 </div>
-                {!compact && <p className="font-medium text-slate-700 dark:text-slate-200 text-lg">Upload Photo</p>}
-                <p className={`text-slate-400 dark:text-slate-300 text-center ${compact ? 'text-xs' : 'text-sm mt-2'}`}>{compact ? 'Upload' : 'SVG, PNG, JPG or GIF'}</p>
+                {!compact && <p className="font-medium text-slate-700 dark:text-slate-200 text-lg">{labels.btnUpload}</p>}
+                <p className={`text-slate-400 dark:text-slate-300 text-center ${compact ? 'text-xs' : 'text-sm mt-2'}`}>{compact ? labels.btnUpload : 'SVG, PNG, JPG'}</p>
               </div>
 
-              {/* Camera Trigger */}
               <div 
                 onClick={startCamera}
-                className={`flex-1 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl flex flex-col items-center justify-center cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-secondary dark:hover:border-secondary transition-all duration-300 group ${compact ? 'p-4 min-h-[100px]' : 'p-10'}`}
+                className={`border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl flex flex-col items-center justify-center cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-secondary dark:hover:border-secondary transition-all duration-300 group ${compact ? 'p-4 min-h-[100px]' : 'p-10'}`}
               >
                 <div className={`bg-slate-100 dark:bg-slate-700 rounded-full mb-2 group-hover:bg-green-50 dark:group-hover:bg-slate-600 transition-colors ${compact ? 'p-2' : 'p-4 mb-4'}`}>
                   <Camera className={`${compact ? 'w-5 h-5' : 'w-8 h-8'} text-slate-600 dark:text-slate-300 group-hover:text-secondary dark:group-hover:text-secondary`} />
                 </div>
-                {!compact && <p className="font-medium text-slate-700 dark:text-slate-200 text-lg">Use Camera</p>}
-                <p className={`text-slate-400 dark:text-slate-300 text-center ${compact ? 'text-xs' : 'text-sm mt-2'}`}>{compact ? 'Camera' : 'Take a photo now'}</p>
+                {!compact && <p className="font-medium text-slate-700 dark:text-slate-200 text-lg">{labels.btnCamera}</p>}
+                <p className={`text-slate-400 dark:text-slate-300 text-center ${compact ? 'text-xs' : 'text-sm mt-2'}`}>{compact ? labels.btnCamera : 'Take photo'}</p>
               </div>
             </div>
             
-            {/* Input (URL or Search) */}
              <form onSubmit={handleInputSubmit} className={`mb-6 relative z-0`}>
                 <div className="relative flex items-center">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center z-10">
@@ -401,7 +399,7 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
                                 type="button" 
                                 onClick={handleClipboardRead}
                                 className="text-slate-400 dark:text-slate-200 hover:text-primary dark:hover:text-primary transition-colors cursor-pointer"
-                                title="Paste image from clipboard"
+                                title={labels.btnPaste}
                             >
                                 <Clipboard className={`${compact ? 'w-4 h-4' : 'w-5 h-5'}`} />
                             </button>
@@ -412,12 +410,11 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
                         onPaste={handlePaste}
-                        placeholder={onSearch ? "Paste image (Ctrl+V) or Search..." : "Paste image (Ctrl+V) or URL..."}
+                        placeholder={onSearch ? labels.placeholderSearch : labels.placeholderUrl}
                         className={`block w-full rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/60 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent transition-all relative z-0 placeholder:text-slate-400 dark:placeholder:text-slate-400 ${compact ? 'pl-9 pr-16 py-2 text-sm' : 'pl-10 pr-20 py-3'}`}
                         disabled={isSearching || isLoading}
                     />
                     
-                    {/* Clear Button */}
                     {inputValue && !isSearching && (
                       <button
                         type="button"
@@ -428,7 +425,6 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
                       </button>
                     )}
 
-                    {/* Submit Button */}
                      <button 
                         type="submit"
                         disabled={!inputValue.trim() || isSearching || isLoading}
@@ -444,10 +440,9 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
                 </div>
             </form>
           </>
-        ) : null
-      )}
+      ) : null}
 
-      {/* Divider / Toggle Button */}
+      {hasSamples && (
       <div className="relative flex items-center justify-center mb-4">
         <hr className="w-full border-slate-200 dark:border-slate-700" />
         <button 
@@ -455,27 +450,25 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
             className="absolute bg-white dark:bg-slate-800 px-3 py-1 rounded-full border border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-200 text-xs font-medium hover:text-primary dark:hover:text-primary hover:border-primary dark:hover:border-primary transition-colors flex items-center gap-2 shadow-sm z-10"
         >
            {showSamples ? (
-               isSearching ? <><Loader2 className="w-3 h-3 animate-spin" /> Searching...</> :
-               isLoading ? <><Loader2 className="w-3 h-3 animate-spin" /> Loading...</> :
-               <>Hide Samples <ChevronUp className="w-3 h-3" /></>
+               isSearching ? <><Loader2 className="w-3 h-3 animate-spin" /> {labels.searching}</> :
+               isLoading ? <><Loader2 className="w-3 h-3 animate-spin" /> {labels.loading}</> :
+               <>{labels.hideSamples} <ChevronUp className="w-3 h-3" /></>
            ) : (
                <>
-                Select from Samples
+                {labels.selectSamples}
                 {isLoading && <Loader2 className="w-3 h-3 animate-spin text-slate-400" />}
                 {!isLoading && <ChevronDown className="w-3 h-3" />}
                </>
            )}
         </button>
       </div>
+      )}
 
-      {/* Collapsible Samples Section */}
-      {showSamples && (
+      {showSamples && hasSamples && (
         <div className="animate-in fade-in slide-in-from-top-2 duration-300 space-y-4">
-            {/* Controls Row: Filters & Shuffle */}
             {!isSearching && !isLoading && (
                 <div className="flex items-start gap-2">
                     <div className="flex-grow space-y-3">
-                        {/* Gender Tabs */}
                         {showGenderFilter && (
                         <div className="flex p-1 bg-slate-100 dark:bg-slate-700 rounded-lg w-full">
                             {(['all', 'male', 'female'] as const).map((gender) => (
@@ -488,13 +481,12 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
                                     : 'text-slate-500 dark:text-slate-300 hover:text-slate-700 dark:hover:text-slate-200'
                                 }`}
                             >
-                                {gender}
+                                {gender === 'all' ? labels.filterAll : gender === 'male' ? labels.filterMale : labels.filterFemale}
                             </button>
                             ))}
                         </div>
                         )}
 
-                        {/* Category Pills - Expandable */}
                         {showCategoryFilter && (
                         <div className="flex flex-wrap gap-2">
                             {displayedCategories.map((cat) => (
@@ -516,9 +508,9 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
                                 className="px-2 py-1 text-xs font-medium text-primary hover:text-primary/80 flex items-center transition-colors"
                             >
                                 {isCategoryExpanded ? (
-                                    <>Less <ChevronUp className="w-3 h-3 ml-1" /></>
+                                    <>{labels.showLess} <ChevronUp className="w-3 h-3 ml-1" /></>
                                 ) : (
-                                    <>{`+${availableCategories.length - VISIBLE_CATEGORY_COUNT} more`}</>
+                                    <>{`+${availableCategories.length - VISIBLE_CATEGORY_COUNT} ${labels.showMore}`}</>
                                 )}
                             </button>
                             )}
@@ -526,13 +518,12 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
                         )}
                     </div>
                     
-                    {/* Shuffle Button */}
                     {onRandomize && (
                         <button 
                             onClick={handleRandomizeClick}
                             disabled={isRandomizing || isLoading}
                             className="p-2 rounded-lg bg-slate-100 dark:bg-slate-700 hover:bg-primary hover:text-white dark:hover:bg-primary transition-all text-slate-500 dark:text-slate-300 flex-shrink-0 border border-slate-200 dark:border-slate-600"
-                            title="Shuffle & Find New Samples"
+                            title={labels.shuffle}
                         >
                             <Dice5 className={`w-4 h-4 ${isRandomizing || isLoading ? 'animate-spin' : ''}`} />
                         </button>
@@ -540,14 +531,12 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
                 </div>
             )}
 
-            {/* Samples Grid */}
             {isSearching ? (
                 <div className="py-8 flex flex-col items-center justify-center text-slate-400 dark:text-slate-300">
                     <Loader2 className="w-8 h-8 animate-spin mb-3 text-primary" />
-                    <p className="text-sm">Finding best matches...</p>
+                    <p className="text-sm">{labels.searching} '{inputValue || '...'}'</p>
                 </div>
             ) : isLoading ? (
-                // Skeleton Loading State
                 <div className={`grid ${compact ? 'grid-cols-3 gap-2' : 'grid-cols-2 sm:grid-cols-4 gap-4'}`}>
                     {[...Array(initialVisibleCount)].map((_, i) => (
                         <div key={i} className={`relative rounded-lg overflow-hidden border-2 border-transparent bg-slate-100 dark:bg-slate-700 animate-pulse ${compact ? 'h-20' : 'h-32'}`}></div>
@@ -568,12 +557,10 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
                             alt={sample.name} 
                             className={`w-full object-cover transition-transform duration-500 group-hover:scale-110 ${compact ? 'h-20' : 'h-32'}`} 
                             onError={(e) => {
-                                // If image fails to load (e.g. CORS or broken link), hide it
                                 (e.target as HTMLImageElement).style.display = 'none';
                                 (e.target as HTMLImageElement).parentElement!.style.display = 'none';
                             }}
                             />
-                            {/* Hover Overlay Name */}
                             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2">
                                 <span className="text-white text-[10px] font-medium truncate w-full">{sample.name}</span>
                             </div>
@@ -582,11 +569,10 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
                     </div>
                     ) : (
                     <div className="text-center py-8 text-slate-400 dark:text-slate-400 text-sm">
-                        No samples match filters.
+                        {labels.noSamples}
                     </div>
                     )}
 
-                    {/* Expand/Collapse Button for Samples */}
                     {hasMoreSamples && compact && (
                     <button 
                         onClick={() => setIsExpanded(!isExpanded)}
@@ -594,11 +580,11 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
                     >
                         {isExpanded ? (
                         <>
-                            <ChevronUp className="w-4 h-4 mr-1" /> Show Less
+                            <ChevronUp className="w-4 h-4 mr-1" /> {labels.showLess}
                         </>
                         ) : (
                         <>
-                            <ChevronDown className="w-4 h-4 mr-1" /> Show +{remainingCount} more
+                            <ChevronDown className="w-4 h-4 mr-1" /> {labels.showMore.replace('{n}', remainingCount.toString())} +{remainingCount}
                         </>
                         )}
                     </button>
@@ -608,5 +594,6 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
         </div>
       )}
     </div>
+    </>
   );
 };
