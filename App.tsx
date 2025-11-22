@@ -598,13 +598,21 @@ const App: React.FC = () => {
                    <div className="flex bg-slate-200 dark:bg-slate-800 p-1 rounded-lg">
                         <button 
                             onClick={() => handleSubjectTypeChange('human')}
-                            className={`flex-1 py-1 px-3 rounded-md text-xs font-medium flex items-center justify-center transition-all ${subjectType === 'human' ? 'bg-white dark:bg-slate-600 text-primary dark:text-primary-300 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
+                            className={`flex-1 py-1 px-3 rounded-md text-xs font-medium flex items-center justify-center transition-all ${
+                                subjectType === 'human' 
+                                ? 'bg-white dark:bg-slate-700 text-primary dark:text-white shadow-sm' 
+                                : 'text-slate-500 dark:text-slate-300 hover:bg-slate-300/50 dark:hover:bg-slate-700/50'
+                            }`}
                         >
                             <User className="w-3 h-3 mr-1" /> Human
                         </button>
                         <button 
                             onClick={() => handleSubjectTypeChange('pet')}
-                            className={`flex-1 py-1 px-3 rounded-md text-xs font-medium flex items-center justify-center transition-all ${subjectType === 'pet' ? 'bg-white dark:bg-slate-600 text-primary dark:text-primary-300 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
+                            className={`flex-1 py-1 px-3 rounded-md text-xs font-medium flex items-center justify-center transition-all ${
+                                subjectType === 'pet' 
+                                ? 'bg-white dark:bg-slate-700 text-primary dark:text-white shadow-sm' 
+                                : 'text-slate-500 dark:text-slate-300 hover:bg-slate-300/50 dark:hover:bg-slate-700/50'
+                            }`}
                         >
                             <PawPrint className="w-3 h-3 mr-1" /> Pet
                         </button>
