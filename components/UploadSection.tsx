@@ -1,6 +1,6 @@
 
 import React, { useRef, useState, useMemo } from 'react';
-import { Upload, Camera, X, RefreshCcw, CheckCircle2, Link, ArrowRight, ChevronDown, ChevronUp, Search, Loader2, Dice5 } from 'lucide-react';
+import { Upload, Camera, X, RefreshCcw, CheckCircle2, Link, ArrowRight, ChevronDown, ChevronUp, Search, Loader2, Dice5, Clipboard } from 'lucide-react';
 import { Sample } from '../types';
 
 interface UploadSectionProps {
@@ -65,6 +65,68 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
         }
       };
       reader.readAsDataURL(file);
+    }
+  };
+
+  // Handle pasting (Ctrl+V) on the container or input
+  const handlePaste = (e: React.ClipboardEvent) => {
+    // 1. Check for image files in clipboard
+    const items = e.clipboardData.items;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf('image') !== -1) {
+        e.preventDefault(); // Prevent pasting the binary string into text input
+        const blob = items[i].getAsFile();
+        if (blob) {
+          const reader = new FileReader();
+          reader.onload = (event) => {
+             if(event.target?.result) onSelect(event.target.result as string);
+          };
+          reader.readAsDataURL(blob);
+        }
+        return;
+      }
+    }
+    
+    // 2. If it's text (and we are in the input), let default behavior happen or handle URL
+    // If we are NOT in the input (e.g. pasted on container div), check if it's a URL
+    if (e.target !== document.activeElement?.closest('input')) {
+         const text = e.clipboardData.getData('text');
+         if (text && (text.startsWith('http') || text.startsWith('data:'))) {
+             onSelect(text);
+         }
+    }
+  };
+
+  // Handle manual clipboard read (Button click)
+  const handleClipboardRead = async () => {
+    try {
+        const items = await navigator.clipboard.read();
+        for (const item of items) {
+            // Prioritize images
+            const imageType = item.types.find(t => t.startsWith('image/'));
+            if (imageType) {
+                const blob = await item.getType(imageType);
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    if(event.target?.result) onSelect(event.target.result as string);
+                };
+                reader.readAsDataURL(blob);
+                return;
+            }
+        }
+        
+        // Fallback: Try reading text if no image
+        const text = await navigator.clipboard.readText();
+        if (text) {
+            if (text.startsWith('http') || text.startsWith('data:')) {
+                onSelect(text);
+            } else {
+                setInputValue(text);
+            }
+        }
+    } catch (err) {
+        console.error("Clipboard access failed", err);
+        alert("Could not access clipboard. Please use Ctrl+V to paste.");
     }
   };
 
@@ -226,7 +288,11 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
   }, []);
 
   return (
-    <div className={`bg-white dark:bg-slate-800 rounded-2xl shadow-lg transition-colors duration-300 flex flex-col ${compact ? 'p-4 md:p-5' : 'p-8 w-full max-w-3xl mx-auto'} ${className}`}>
+    <div 
+      className={`bg-white dark:bg-slate-800 rounded-2xl shadow-lg transition-colors duration-300 flex flex-col focus:outline-none ${compact ? 'p-4 md:p-5' : 'p-8 w-full max-w-3xl mx-auto'} ${className}`}
+      onPaste={handlePaste}
+      tabIndex={0} // Make div focusable to accept paste events
+    >
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
             <h2 className={`${compact ? 'text-lg' : 'text-2xl'} font-bold text-slate-800 dark:text-slate-100`}>{title}</h2>
@@ -308,7 +374,7 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
                   <Upload className={`${compact ? 'w-5 h-5' : 'w-8 h-8'} text-slate-600 dark:text-slate-300 group-hover:text-primary dark:group-hover:text-primary`} />
                 </div>
                 {!compact && <p className="font-medium text-slate-700 dark:text-slate-200 text-lg">Upload Photo</p>}
-                <p className={`text-slate-400 dark:text-slate-400 text-center ${compact ? 'text-xs' : 'text-sm mt-2'}`}>{compact ? 'Upload' : 'SVG, PNG, JPG or GIF'}</p>
+                <p className={`text-slate-400 dark:text-slate-300 text-center ${compact ? 'text-xs' : 'text-sm mt-2'}`}>{compact ? 'Upload' : 'SVG, PNG, JPG or GIF'}</p>
               </div>
 
               {/* Camera Trigger */}
@@ -320,25 +386,33 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
                   <Camera className={`${compact ? 'w-5 h-5' : 'w-8 h-8'} text-slate-600 dark:text-slate-300 group-hover:text-secondary dark:group-hover:text-secondary`} />
                 </div>
                 {!compact && <p className="font-medium text-slate-700 dark:text-slate-200 text-lg">Use Camera</p>}
-                <p className={`text-slate-400 dark:text-slate-400 text-center ${compact ? 'text-xs' : 'text-sm mt-2'}`}>{compact ? 'Camera' : 'Take a photo now'}</p>
+                <p className={`text-slate-400 dark:text-slate-300 text-center ${compact ? 'text-xs' : 'text-sm mt-2'}`}>{compact ? 'Camera' : 'Take a photo now'}</p>
               </div>
             </div>
             
             {/* Input (URL or Search) */}
              <form onSubmit={handleInputSubmit} className={`mb-6 relative z-0`}>
                 <div className="relative flex items-center">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center z-10">
                         {onSearch && !inputValue.startsWith('http') ? (
-                            <Search className={`text-slate-400 dark:text-slate-300 ${compact ? 'w-4 h-4' : 'w-5 h-5'}`} />
+                            <Search className={`text-slate-400 dark:text-slate-200 ${compact ? 'w-4 h-4' : 'w-5 h-5'}`} />
                         ) : (
-                            <Link className={`text-slate-400 dark:text-slate-300 ${compact ? 'w-4 h-4' : 'w-5 h-5'}`} />
+                            <button 
+                                type="button" 
+                                onClick={handleClipboardRead}
+                                className="text-slate-400 dark:text-slate-200 hover:text-primary dark:hover:text-primary transition-colors cursor-pointer"
+                                title="Paste image from clipboard"
+                            >
+                                <Clipboard className={`${compact ? 'w-4 h-4' : 'w-5 h-5'}`} />
+                            </button>
                         )}
                     </div>
                     <input
                         type="text"
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
-                        placeholder={onSearch ? "Google Search images or paste URL..." : "Paste image URL..."}
+                        onPaste={handlePaste}
+                        placeholder={onSearch ? "Paste image (Ctrl+V) or Search..." : "Paste image (Ctrl+V) or URL..."}
                         className={`block w-full rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/60 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent transition-all relative z-0 placeholder:text-slate-400 dark:placeholder:text-slate-400 ${compact ? 'pl-9 pr-16 py-2 text-sm' : 'pl-10 pr-20 py-3'}`}
                         disabled={isSearching || isLoading}
                     />
@@ -378,7 +452,7 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
         <hr className="w-full border-slate-200 dark:border-slate-700" />
         <button 
             onClick={() => setShowSamples(!showSamples)}
-            className="absolute bg-white dark:bg-slate-800 px-3 py-1 rounded-full border border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-300 text-xs font-medium hover:text-primary dark:hover:text-primary hover:border-primary dark:hover:border-primary transition-colors flex items-center gap-2 shadow-sm z-10"
+            className="absolute bg-white dark:bg-slate-800 px-3 py-1 rounded-full border border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-200 text-xs font-medium hover:text-primary dark:hover:text-primary hover:border-primary dark:hover:border-primary transition-colors flex items-center gap-2 shadow-sm z-10"
         >
            {showSamples ? (
                isSearching ? <><Loader2 className="w-3 h-3 animate-spin" /> Searching...</> :
@@ -411,7 +485,7 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
                                 className={`flex-1 py-1.5 text-xs font-medium rounded-md capitalize transition-all ${
                                 filterGender === gender 
                                     ? 'bg-white dark:bg-slate-600 text-primary dark:text-primary-300 shadow-sm' 
-                                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                                    : 'text-slate-500 dark:text-slate-300 hover:text-slate-700 dark:hover:text-slate-200'
                                 }`}
                             >
                                 {gender}
@@ -507,7 +581,7 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
                         ))}
                     </div>
                     ) : (
-                    <div className="text-center py-8 text-slate-400 dark:text-slate-500 text-sm">
+                    <div className="text-center py-8 text-slate-400 dark:text-slate-400 text-sm">
                         No samples match filters.
                     </div>
                     )}

@@ -355,6 +355,66 @@ export const SAMPLE_PET_OUTFITS: Sample[] = [
     name: 'Halloween Ghost',
     url: 'https://images.unsplash.com/photo-1605639156481-244775d6f803?q=80&w=1000&auto=format&fit=crop',
     category: 'Costume'
+  },
+  {
+    id: 'pet-outfit-9',
+    name: 'Bumblebee Costume',
+    url: 'https://images.unsplash.com/photo-1583337130417-3346a1be7dee?q=80&w=1000&auto=format&fit=crop',
+    category: 'Costume'
+  },
+  {
+    id: 'pet-outfit-10',
+    name: 'Hawaiian Shirt',
+    url: 'https://images.unsplash.com/photo-1592194996308-7b43878e84a6?q=80&w=1000&auto=format&fit=crop',
+    category: 'Summer'
+  },
+  {
+    id: 'pet-outfit-11',
+    name: 'Red Scarf',
+    url: 'https://images.unsplash.com/photo-1610041321420-a596dd14ebc9?q=80&w=1000&auto=format&fit=crop',
+    category: 'Winter'
+  },
+  {
+    id: 'pet-outfit-12',
+    name: 'Pink Tutu',
+    url: 'https://images.unsplash.com/photo-1596854706631-738591315ee6?q=80&w=1000&auto=format&fit=crop',
+    category: 'Chic'
+  },
+  {
+    id: 'pet-outfit-13',
+    name: 'Tactical Vest',
+    url: 'https://images.unsplash.com/photo-1605897472359-85e4b94d685d?q=80&w=1000&auto=format&fit=crop',
+    category: 'Outdoor'
+  },
+  {
+    id: 'pet-outfit-14',
+    name: 'Santa Outfit',
+    url: 'https://images.unsplash.com/photo-1545249390-6bdfa286032f?q=80&w=1000&auto=format&fit=crop',
+    category: 'Holiday'
+  },
+  {
+    id: 'pet-outfit-15',
+    name: 'Cool Sunglasses',
+    url: 'https://images.unsplash.com/photo-1535930749574-1399327ce78f?q=80&w=1000&auto=format&fit=crop',
+    category: 'Accessories'
+  },
+  {
+    id: 'pet-outfit-16',
+    name: 'Knit Hat',
+    url: 'https://images.unsplash.com/photo-1518020382113-a7e8fc38eac9?q=80&w=1000&auto=format&fit=crop',
+    category: 'Winter'
+  },
+  {
+    id: 'pet-outfit-17',
+    name: 'Blue Bandana',
+    url: 'https://images.unsplash.com/photo-1552053831-71594a27632d?q=80&w=1000&auto=format&fit=crop',
+    category: 'Casual'
+  },
+  {
+    id: 'pet-outfit-18',
+    name: 'Sport Hoodie',
+    url: 'https://images.unsplash.com/photo-1576201836106-db1758fd1c97?q=80&w=1000&auto=format&fit=crop',
+    category: 'Sport'
   }
 ];
 

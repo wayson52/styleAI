@@ -601,7 +601,7 @@ const App: React.FC = () => {
                             className={`flex-1 py-1 px-3 rounded-md text-xs font-medium flex items-center justify-center transition-all ${
                                 subjectType === 'human' 
                                 ? 'bg-white dark:bg-slate-700 text-primary dark:text-white shadow-sm' 
-                                : 'text-slate-500 dark:text-slate-300 hover:bg-slate-300/50 dark:hover:bg-slate-700/50'
+                                : 'text-slate-500 dark:text-slate-200 hover:bg-slate-300/50 dark:hover:bg-slate-700/50'
                             }`}
                         >
                             <User className="w-3 h-3 mr-1" /> Human
@@ -611,7 +611,7 @@ const App: React.FC = () => {
                             className={`flex-1 py-1 px-3 rounded-md text-xs font-medium flex items-center justify-center transition-all ${
                                 subjectType === 'pet' 
                                 ? 'bg-white dark:bg-slate-700 text-primary dark:text-white shadow-sm' 
-                                : 'text-slate-500 dark:text-slate-300 hover:bg-slate-300/50 dark:hover:bg-slate-700/50'
+                                : 'text-slate-500 dark:text-slate-200 hover:bg-slate-300/50 dark:hover:bg-slate-700/50'
                             }`}
                         >
                             <PawPrint className="w-3 h-3 mr-1" /> Pet
@@ -659,7 +659,7 @@ const App: React.FC = () => {
                     {/* Tops */}
                     <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col shadow-sm h-full">
                     <div className="p-3 bg-blue-50/50 dark:bg-blue-900/10 border-b border-blue-100 dark:border-blue-900/20 flex items-center justify-between">
-                        <span className="font-bold text-blue-700 dark:text-blue-300 flex items-center text-sm">
+                        <span className="font-bold text-blue-700 dark:text-blue-200 flex items-center text-sm">
                             <Shirt className="w-4 h-4 mr-2" /> Tops
                         </span>
                         {topImage && <span className="w-2 h-2 bg-blue-500 rounded-full"></span>}
@@ -745,7 +745,7 @@ const App: React.FC = () => {
                   className={`w-full py-4 px-6 rounded-2xl font-bold text-lg shadow-lg transition-all flex items-center justify-center transform active:scale-[0.98] ${
                     canGenerate 
                     ? 'bg-gradient-to-r from-primary to-purple-600 text-white hover:shadow-xl hover:shadow-primary/20' 
-                    : 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-600 cursor-not-allowed'
+                    : 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed'
                   }`}
                 >
                   {isLoading ? (
@@ -798,8 +798,8 @@ const App: React.FC = () => {
                             <div className="bg-slate-100 dark:bg-slate-800 p-6 rounded-full mb-4">
                                <Sparkles className="w-10 h-10 text-slate-400 dark:text-slate-500" />
                             </div>
-                            <h3 className="text-lg font-bold text-slate-700 dark:text-slate-300">Ready to Create</h3>
-                            <p className="text-sm text-slate-400 dark:text-slate-500 max-w-[200px] mt-2">
+                            <h3 className="text-lg font-bold text-slate-700 dark:text-slate-200">Ready to Create</h3>
+                            <p className="text-sm text-slate-400 dark:text-slate-400 max-w-[200px] mt-2">
                               Select a model and some clothes, then hit Generate to see the magic.
                             </p>
                          </div>
