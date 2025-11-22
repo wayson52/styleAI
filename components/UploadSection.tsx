@@ -345,8 +345,8 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
       )}
 
       {compact && selectedUrl && (
-        <div className="mb-4 relative group rounded-lg overflow-hidden h-40 bg-slate-100 dark:bg-slate-700 flex items-center justify-center border border-slate-200 dark:border-slate-600 shrink-0">
-          <img src={selectedUrl} alt="Selected" className="h-full w-full object-cover" />
+        <div className="mb-4 relative group rounded-lg overflow-hidden h-48 bg-slate-100 dark:bg-slate-700 flex items-center justify-center border border-slate-200 dark:border-slate-600 shrink-0 animate-in fade-in duration-300">
+          <img src={selectedUrl} alt="Selected" className="h-full w-full object-cover block" />
           <button 
             onClick={() => onSelect('')} 
             className="absolute top-2 right-2 bg-black/60 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10 cursor-pointer hover:bg-black/80"

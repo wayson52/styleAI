@@ -485,7 +485,7 @@ const App: React.FC = () => {
         
         <div className="p-4 flex-grow flex flex-col gap-4 overflow-y-auto">
             {personImage ? (
-            <div className="relative group rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 aspect-[3/4] bg-slate-100 dark:bg-slate-800">
+            <div className="relative group rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 flex-grow w-full bg-slate-100 dark:bg-slate-800">
                 <img src={personImage} alt="Base Model" className="w-full h-full object-cover" />
                 <button 
                 onClick={() => setPersonImage(null)}
