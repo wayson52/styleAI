@@ -263,8 +263,30 @@ const App: React.FC = () => {
   const [isBottomsLoading, setIsBottomsLoading] = useState(false);
   const [isPetOutfitsLoading, setIsPetOutfitsLoading] = useState(false);
 
-  // Language State
-  const [currentLang, setCurrentLang] = useState<LanguageCode>('en');
+  // Language State with Persistence and Auto-detection
+  const [currentLang, setCurrentLang] = useState<LanguageCode>(() => {
+    if (typeof window !== 'undefined') {
+      // 1. Check Local Storage
+      const savedLang = localStorage.getItem('styleai_lang');
+      const supportedCodes: LanguageCode[] = ['en', 'zh-CN', 'ms', 'ko', 'ja'];
+      if (savedLang && supportedCodes.includes(savedLang as LanguageCode)) {
+        return savedLang as LanguageCode;
+      }
+
+      // 2. Check System Language
+      const systemLang = navigator.language || 'en';
+      if (systemLang.startsWith('zh')) return 'zh-CN';
+      if (systemLang.startsWith('ms')) return 'ms';
+      if (systemLang.startsWith('ko')) return 'ko';
+      if (systemLang.startsWith('ja')) return 'ja';
+    }
+    return 'en';
+  });
+
+  // Persist language change
+  useEffect(() => {
+    localStorage.setItem('styleai_lang', currentLang);
+  }, [currentLang]);
 
   // Translation Helper
   const t = translations[currentLang];
@@ -485,7 +507,7 @@ const App: React.FC = () => {
         
         <div className="p-4 flex-grow flex flex-col gap-4 overflow-y-auto">
             {personImage ? (
-            <div className="relative group rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 flex-grow w-full bg-slate-100 dark:bg-slate-800">
+            <div className="flex-grow h-full relative group rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 w-full bg-slate-100 dark:bg-slate-800">
                 <img src={personImage} alt="Base Model" className="w-full h-full object-cover" />
                 <button 
                 onClick={() => setPersonImage(null)}
@@ -501,7 +523,7 @@ const App: React.FC = () => {
                 samples={[]}
                 onSelect={setPersonImage}
                 compact={true}
-                className="flex-grow"
+                className="flex-grow h-full"
                 enableCategoryFilter={false}
                 enableGenderFilter={false}
                 initialVisibleCount={0}

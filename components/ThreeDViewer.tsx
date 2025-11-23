@@ -17,6 +17,9 @@ declare global {
       spotLight: any;
       pointLight: any;
       gridHelper: any;
+      // HTML elements used in this component
+      div: any;
+      span: any;
     }
   }
 }
